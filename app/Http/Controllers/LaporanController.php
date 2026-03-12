@@ -43,7 +43,8 @@ class LaporanController extends Controller
     private function laporanPeminjaman($mulai, $akhir): array
     {
         $peminjaman = Peminjaman::with(['user', 'buku'])
-            ->whereBetween('created_at', [$mulai, $akhir])
+            ->whereDate('tanggal_pinjam', '>=', $mulai)
+            ->whereDate('tanggal_pinjam', '<=', $akhir)
             ->latest()
             ->get();
 
@@ -64,7 +65,8 @@ class LaporanController extends Controller
         $peminjaman = Peminjaman::with(['user', 'buku'])
             ->whereIn('status', ['terlambat', 'dikembalikan'])
             ->where('denda', '>', 0)
-            ->whereBetween('created_at', [$mulai, $akhir])
+            ->whereDate('tanggal_pinjam', '>=', $mulai)
+            ->whereDate('tanggal_pinjam', '<=', $akhir)
             ->latest()
             ->get();
 
@@ -80,7 +82,8 @@ class LaporanController extends Controller
     private function laporanBukuPopuler($mulai, $akhir): array
     {
         $buku = Buku::withCount(['peminjaman' => function($q) use ($mulai, $akhir) {
-                $q->whereBetween('created_at', [$mulai, $akhir]);
+                $q->whereDate('tanggal_pinjam', '>=', $mulai)
+                  ->whereDate('tanggal_pinjam', '<=', $akhir);
             }])
             ->orderByDesc('peminjaman_count')
             ->limit(20)
@@ -99,7 +102,8 @@ class LaporanController extends Controller
     {
         $anggota = User::where('role', 'peminjam')
             ->withCount(['peminjaman' => function($q) use ($mulai, $akhir) {
-                $q->whereBetween('created_at', [$mulai, $akhir]);
+                $q->whereDate('tanggal_pinjam', '>=', $mulai)
+                  ->whereDate('tanggal_pinjam', '<=', $akhir);
             }])
             ->orderByDesc('peminjaman_count')
             ->get();

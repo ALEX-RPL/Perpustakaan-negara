@@ -5,6 +5,7 @@
 @php
 $prefix = auth()->user()->isAdministrator() ? 'admin' : 'petugas';
 $action = isset($buku) ? route($prefix.'.buku.update',$buku->id) : route($prefix.'.buku.store');
+$isbnValue = old('isbn', $buku->isbn ?? \App\Models\Buku::generateISBN());
 @endphp
 
 <div class="flex gap-4" style="align-items:flex-start;flex-wrap:wrap;">
@@ -46,7 +47,16 @@ $action = isset($buku) ? route($prefix.'.buku.update',$buku->id) : route($prefix
                         </div>
                         <div class="fg">
                             <label class="lbl">ISBN</label>
-                            <input type="text" name="isbn" class="input" value="{{ old('isbn',$buku->isbn??'') }}" placeholder="978-xxx-xxx-xxx">
+                            <div class="flex gap-2">
+                                <input type="text" name="isbn" id="isbnInput" class="input"
+                                    value="{{ $isbnValue }}"
+                                    placeholder="978-xxx-xxx-xxx"
+                                    {{ isset($buku) ? '' : 'onclick="this.select()"' }}>
+                                <button type="button" class="btn btn-secondary" onclick="generateNewISBN()" title="Generate ISBN Baru">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                            </div>
+                            <p class="hint">Kosongkan untuk auto-generate ISBN-13</p>
                             @error('isbn') <div class="err">{{ $message }}</div> @enderror
                         </div>
                         <div class="fg">
@@ -137,6 +147,29 @@ $action = isset($buku) ? route($prefix.'.buku.update',$buku->id) : route($prefix
 
 @push('scripts')
 <script>
+// Generate ISBN-13 dengan format valid
+function generateISBN13() {
+    // Prefix 978 (Indonesia/Asia)
+    const category = String(Math.floor(Math.random() * 99) + 1).padStart(2, '0');
+    const uniqueNum = String(Math.floor(Math.random() * 99999999) + 1).padStart(8, '0');
+
+    const partial = '978' + category + uniqueNum;
+
+    // Hitung check digit ISBN-13
+    let sum = 0;
+    for (let i = 0; i < 12; i++) {
+        sum += parseInt(partial[i]) * (i % 2 === 0 ? 1 : 3);
+    }
+
+    const checkDigit = (10 - (sum % 10)) % 10;
+    return partial + checkDigit;
+}
+
+function generateNewISBN() {
+    const isbn = generateISBN13();
+    document.getElementById('isbnInput').value = isbn;
+}
+
 function previewCover(e) {
     const file = e.target.files[0];
     if (!file) return;

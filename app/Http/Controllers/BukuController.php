@@ -9,6 +9,24 @@ use Illuminate\Support\Facades\Storage;
 
 class BukuController extends Controller
 {
+    /**
+     * Helper untuk menentukan route redirect berdasarkan role
+     */
+    private function getRedirectRoute()
+    {
+        // Sesuaikan dengan nama role di database kamu
+        // Jika admin role-nya 'administrator', gunakan 'admin' sebagai prefix route
+        $role = Auth::user()->role;
+
+        if ($role === 'administrator') {
+            return 'admin.buku.index';
+        } elseif ($role === 'petugas') {
+            return 'petugas.buku.index';
+        }
+
+        return 'login'; // Fallback
+    }
+
     public function index(Request $request)
     {
         $query = Buku::with('createdBy');
@@ -30,6 +48,8 @@ class BukuController extends Controller
         $buku = $query->latest()->paginate(10)->withQueryString();
         $kategori = Buku::distinct()->pluck('kategori');
 
+        // Menggunakan view yang sama namun dengan pengecekan prefix di view jika perlu
+        // Atau kamu bisa arahkan ke view admin karena layoutnya biasanya mirip
         return view('admin.buku.index', compact('buku', 'kategori'));
     }
 
@@ -57,12 +77,13 @@ class BukuController extends Controller
         }
 
         $validated['kode_buku']      = Buku::generateKode();
+        $validated['isbn']           = !empty($validated['isbn']) ? $validated['isbn'] : Buku::generateISBN();
         $validated['stok_tersedia']  = $validated['stok'];
         $validated['created_by']     = Auth::id();
 
         Buku::create($validated);
 
-        return redirect()->route('admin.buku.index')
+        return redirect()->route($this->getRedirectRoute())
             ->with('success', 'Buku berhasil ditambahkan.');
     }
 
@@ -92,7 +113,6 @@ class BukuController extends Controller
             'is_active'    => ['boolean'],
         ]);
 
-        // Adjust stok_tersedia based on stok change
         $selisih = $validated['stok'] - $buku->stok;
         $validated['stok_tersedia'] = max(0, $buku->stok_tersedia + $selisih);
 
@@ -103,7 +123,7 @@ class BukuController extends Controller
 
         $buku->update($validated);
 
-        return redirect()->route('admin.buku.index')
+        return redirect()->route($this->getRedirectRoute())
             ->with('success', 'Data buku berhasil diperbarui.');
     }
 
@@ -120,11 +140,10 @@ class BukuController extends Controller
         if ($buku->cover) Storage::disk('public')->delete($buku->cover);
         $buku->delete();
 
-        return redirect()->route('admin.buku.index')
+        return redirect()->route($this->getRedirectRoute())
             ->with('success', 'Buku berhasil dihapus.');
     }
 
-    // For peminjam - browse books
     public function catalog(Request $request)
     {
         $query = Buku::where('is_active', true);
